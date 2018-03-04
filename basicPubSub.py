@@ -87,14 +87,7 @@ def sensor_tag_init():
 	tool.sendline('char-write-cmd 0x3F 3F00') #00111111 00000000
 	tool.expect('\[LE\]>')
 	time_old = time.time()
-'''
-def get_ambient_temp(raw_temp_bytes):
-        raw_ambient_temp = int('0x' + raw_temp_bytes[3] + raw_temp_bytes[2], 16)
-        ambient_temp_int = raw_ambient_temp >> 2 & 0x3FFF
-        ambient_temp_celsius = float(ambient_temp_int) * 0.03125
-        print("Ambient Temp: " + str(ambient_temp_celsius))
-        return [ambient_temp_celsius, 0 ,0 ]
-'''
+
 def get_object_temp(raw_temp_bytes):
         raw_object_temp = int('0x' + raw_temp_bytes[1] + raw_temp_bytes[0], 16)
         object_temp_int = raw_object_temp >> 2 & 0x3FFF
@@ -158,7 +151,6 @@ def get_sensor_data():
     sensor_data[6] = get_object_temp(raw_temp_data)
     return sensor_data[6]
     '''
-    sensor_data[6] = sensor.get_ambient_temp(raw_temp_data)
     tool.sendline('char-read-hnd 0x3C')
     tool.expect('descriptor: .*')
     rval = tool.after.split()
@@ -169,23 +161,19 @@ def get_sensor_data():
     sensor_data[3][1] = abs(sensor_data[3][1]) * 0.5
     sensor_data[3][2] = abs(sensor_data[3][2]) * 0.5
     print("")
-    '''
 
 def raw_data_to_bytes(raw_data):
     raw_data_hex = binascii.hexlify(raw_data[0])
-    print(raw_data_hex)
     raw_data_bytes = [ ]
     read_index = 0
-    print("Length of raw_data_hex: " +str(len(raw_data_hex)))
     for index, char in enumerate(raw_data_hex):
         actual_byte = raw_data_hex[read_index] + raw_data_hex[read_index+1]
         raw_data_bytes.append(actual_byte)
-
         if (read_index+2) == len(raw_data_hex):
             break
         read_index = read_index + 2
     return raw_data_bytes
-                                      
+    '''                                  
 
 # Custom MQTT message callback
 def customCallback(client, userdata, message):
