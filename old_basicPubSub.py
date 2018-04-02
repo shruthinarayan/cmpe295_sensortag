@@ -24,11 +24,12 @@ import argparse
 import json
 import binascii
 import Adafruit_ADS1x15
+#import CC2650 as sensor
 import signal
-from pulsesensor import Pulsesensor
 
 # Create an ADS1115 ADC (16-bit) instance.
 adc = Adafruit_ADS1x15.ADS1115()
+
 
 # Choose a gain of 1 for reading voltages from 0 to 4.09V.
 # Or pick a different gain to change the range of voltages that are read:
@@ -55,6 +56,8 @@ AllowedActions = ['both', 'publish', 'subscribe']
 adc = Adafruit_ADS1x15.ADS1015(address=0x48, busnum=1)
 
 
+
+
 # *************************Sensor Tag **************************
 
 def signal_handler(signal, frame):
@@ -70,14 +73,9 @@ def floatfromhex(h):
 
 def sensor_tag_init():
 	signal.signal(signal.SIGINT, signal_handler)
-	#global sensor_data
-        #sensor_data = [ [0,0,0] , [0,0,0] ]
-        global temp 	
-        global accl_data
-        accl_data = [ 0,0,0 ]
-        global gy_data
-        gy_data = [ 0,0,0 ]
-        bluetooth_adr ='54:6C:0E:53:18:6C' 
+	global sensor_data
+        sensor_data = [ [0,0,0] , [0,0,0] , [0,0,0] , [0,0,0] , [0,0,0] , [0,0,0] , [0,0,0] , [0,0,0] , [0,0,0] , [0,0,0] ]
+	bluetooth_adr ='54:6C:0E:53:18:6C' 
 	global tool 
         tool = pexpect.spawn('gatttool -b ' + bluetooth_adr + ' --interactive')
 	tool.expect('\[LE\]>')
@@ -89,15 +87,14 @@ def sensor_tag_init():
 	tool.sendline('char-write-cmd 0x3F 3F00') #00111111 00000000
 	tool.expect('\[LE\]>')
 	time_old = time.time()
-        time_test = time.time()
-        time.sleep(0.5)
 
 def get_object_temp(raw_temp_bytes):
         raw_object_temp = int('0x' + raw_temp_bytes[1] + raw_temp_bytes[0], 16)
         object_temp_int = raw_object_temp >> 2 & 0x3FFF
-        object_temp_celsius = round ( float(object_temp_int) * 0.03125, 1 )
-        return object_temp_celsius
-
+        object_temp_celsius = float(object_temp_int) * 0.03125
+        print("Object (IR) Temp: " + str(object_temp_celsius))
+        return [object_temp_celsius, 0, 0 ]
+'''
 def signedFromHex16(s):
         v = int(s,16)
         if not 0 <= v < 65536:
@@ -109,65 +106,74 @@ def signedFromHex16(s):
 def get_gyro_data(raw_move_bytes):
         str_gyro_x =  '0x' + raw_move_bytes[1] + raw_move_bytes[0]
         raw_gyro_x = signedFromHex16(str_gyro_x)
-        gyro_x = round ( (raw_gyro_x * 1.0) / (32768/250), 1 )
+        gyro_x = (raw_gyro_x * 1.0) / (32768/250)
 
         str_gyro_y = '0x' + raw_move_bytes[3] + raw_move_bytes[2]
         raw_gyro_y = signedFromHex16(str_gyro_y)
-        gyro_y = round ( (raw_gyro_y * 1.0) / (32768/250), 1 )
+        gyro_y = (raw_gyro_y * 1.0) / (32768/250)
 
         str_gyro_z = '0x' + raw_move_bytes[5] + raw_move_bytes[4]
         raw_gyro_z = signedFromHex16(str_gyro_z)
-        gyro_z = round ( (raw_gyro_z * 1.0) / (32768/250), 1 )
+        gyro_z = (raw_gyro_z * 1.0) / (32768/250)
 
         raw_gyro = [raw_gyro_x, raw_gyro_y, raw_gyro_z]
         gyro_data = [gyro_x, gyro_y, gyro_z]
 
+        print("Gyro Data: " + str(gyro_data))
         return gyro_data
 
 def get_acc_data(raw_move_bytes):
         str_acc_x =  '0x' + raw_move_bytes[7] + raw_move_bytes[6]
         raw_acc_x = signedFromHex16(str_acc_x)
-        acc_x = round ( ( (raw_acc_x * 1.0) / (32768/2) ), 1 )
+        acc_x = ( float(raw_acc_x) / (32768/8) )
 
         str_acc_y = '0x' + raw_move_bytes[9] + raw_move_bytes[8]
         raw_acc_y = signedFromHex16(str_acc_y)
-        acc_y = round ( ( (raw_acc_y * 1.0) / (32768/2) ), 1 )
+        acc_y = ( float(raw_acc_y) / (32768/8) )
 
         str_acc_z = '0x' + raw_move_bytes[11] + raw_move_bytes[10]
         raw_acc_z = signedFromHex16(str_acc_z)
-        acc_z = round ( ( (raw_acc_z * 1.0) / (32768/2) ), 1 )
+        acc_z = ( float(raw_acc_z) / (32768/8) )
 
         raw_acc = [raw_acc_x, raw_acc_y, raw_acc_z]
         acc_data = [acc_x, acc_y, acc_z]
+        print("Acc Data: " + str(acc_data))
         return acc_data
-
+'''
 def get_sensor_data():
     sensor_tag_init()
+    time_test = time.time()
+    time.sleep(0.5)
     tool.sendline('char-read-hnd 0x24')
     tool.expect('descriptor: .*')
     rval = tool.after.split()
     raw_temp_data = [ rval[1], rval[2], rval[3], rval[4] ]
-    #sensor_data[0] = get_object_temp(raw_temp_data)
-    #i = sensor_data[0]	
-    temp= get_object_temp(raw_temp_data)
-    return temp
-    
-def get_move_acc_data():
+    sensor_data[6] = get_object_temp(raw_temp_data)
+    return sensor_data[6]
+    '''
     tool.sendline('char-read-hnd 0x3C')
     tool.expect('descriptor: .*')
     rval = tool.after.split()
     raw_move_data = [ rval[1], rval[2], rval[3], rval[4], rval[5], rval[6], rval[7], rval[8], rval[9], rval[10], rval[11], rval[12], rval[13], rval[14], rval[15], rval[16], rval[17], rval[18] ]
-    #sensor_data[0] = get_acc_data(raw_move_data)
-    #sensor_data[1] = get_gyro_data(raw_move_data)
-    #return sensor_data[0]
-    accl_data = get_acc_data(raw_move_data)
-    gy_data = get_gyro_data(raw_move_data) 
-    return accl_data
+    sensor_data[3] = sensor.get_acc_data(raw_move_data)
+    sensor_data[3] = sensor.get_gyro_data(raw_move_data)
+    sensor_data[3][0] = abs(sensor_data[3][0]) * 0.5
+    sensor_data[3][1] = abs(sensor_data[3][1]) * 0.5
+    sensor_data[3][2] = abs(sensor_data[3][2]) * 0.5
+    print("")
 
-def get_move_gyro_data():
-    #return sensor_data[1]
-    return gy_data                           
-
+def raw_data_to_bytes(raw_data):
+    raw_data_hex = binascii.hexlify(raw_data[0])
+    raw_data_bytes = [ ]
+    read_index = 0
+    for index, char in enumerate(raw_data_hex):
+        actual_byte = raw_data_hex[read_index] + raw_data_hex[read_index+1]
+        raw_data_bytes.append(actual_byte)
+        if (read_index+2) == len(raw_data_hex):
+            break
+        read_index = read_index + 2
+    return raw_data_bytes
+    '''                                  
 
 # Custom MQTT message callback
 def customCallback(client, userdata, message):
@@ -247,34 +253,15 @@ if args.mode == 'both' or args.mode == 'subscribe':
     myAWSIoTMQTTClient.subscribe(topic, 1, customCallback)
 time.sleep(2)
 
-# ******************************** Pulse Sensor ***********************************
-p = Pulsesensor()
-p.startAsyncBPM()
-
-
 # Publish to the same topic in a loop forever
 loopCount = 0
 while True:
     if args.mode == 'both' or args.mode == 'publish':
-        bpm = p.BPM
-        temperature = get_sensor_data()
-        accelerometer = [ 0,0,0 ]
-        accelerometer = get_move_acc_data()
-        gyroscope = [ 0,0,0 ]
-        gyroscope = get_move_gyro_data()
- 	message = {}
-        #message = {"PulseSensorValues": bpm}
-        message = {"Temp": temperature, 
-                   "ACCx": accelerometer[0],
-                   "ACCy": accelerometer[1],
-                   "ACCz": accelerometer[2],
-                   "GYRx": gyroscope[0],
-                   "GYRy": gyroscope[1],
-                   "GYRz": gyroscope[2]}
-        #message['ObjectTemperature'] = get_sensor_data() 
-        #message['Accelerometer'] = get_move_acc_data()
-	#message['Gyroscope'] = get_move_gyro_data()
-	messageJson = json.dumps(message)
+        message = {}
+        message['Object Temperature'] =get_sensor_data() 
+        message['Rimjhim'] = loopCount
+        message['sequence'] = loopCount
+        messageJson = json.dumps(message)
         myAWSIoTMQTTClient.publish(topic, messageJson, 1)
         if args.mode == 'publish':
             print('Published topic %s: %s\n' % (topic, messageJson))
